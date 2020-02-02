@@ -1,0 +1,374 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<!-- <link rel="stylesheet" href="styles.css"> -->
+		<title> Calendar </title>
+		<style>
+		table {  
+			color: #333;
+			font-family: Helvetica, Arial, sans-serif;
+			width: 100%; 
+			border-collapse: 
+			collapse; border-spacing: 0; 
+		}
+
+		td, th {  
+			border: 1px solid transparent; /* No more visible border */
+			height: 30px; 
+			transition: all 0.3s;  /* Simple transition for hover effect */
+		}
+
+		th {  
+			background: #DFDFDF;  /* Darken header a bit */
+			font-weight: bold;
+		}
+
+		td {  
+			background: #FAFAFA;
+			text-align: center;
+		}
+
+		/* Cells in even rows (2,4,6...) are one color */        
+		/'tr:nth-child(even) td { background: #F1F1F1; }   */
+
+		/* Cells in odd rows (1,3,5...) are another (excludes header cells)  */        
+		/*tr:nth-child(odd) td { background: #FEFEFE; }  */
+		
+		tr: td { background: #FEFEFE; }  
+
+		tr td:hover { background: #666; color: #FFF; }  
+		/* Hover cell effect! */
+
+		</style>
+				
+		<script>
+		
+		var ICSfile;
+		var DOMevents = [];
+		
+		window.onload = function(){
+		
+		
+		document.getElementById("btnClick").addEventListener("click", function () { //Function that generates new table on sizechange
+		   
+		   DOMevents = [];
+		   //getCalendar();
+		   //document.getElementById("txtShow").value = ICSfile;
+		   //parseICS(ICSfile);
+		   //SortAndShow();
+		   
+		   //alert(GetDateTime('20190123T091500Z'));
+		   
+		   
+		   var file1 = document.getElementById("txtUrl").value;
+		
+		
+			parseICS(getCalendar(file1));
+			SortAndShow();
+		  
+		});
+		 
+		
+//		document.getElementById("btnEvent").addEventListener("click", function () {
+//			var str = "";
+//			for( var i = 0;i<DOMevents.length;i++){
+//				str += " " + GetDateTime(DOMevents[i].DTSTART) + " ";
+//			}
+//			document.getElementById("txtShow").value = str;
+//			alert(DOMevents[0].DTEND);
+//		});
+		
+		//var file1 = document.getElementById("txtUrl").value;
+		//var file1 = "https://cloud.timeedit.net/usn/web/publikk/s.ics?i=eZ416n056dQ5j685567Zy4nZ166QQ307Y50QZQ24u15";
+		var file2 = "https://cloud.timeedit.net/usn/web/publikk/ri6Q56657Q6001QQnZZZ0Q6Z0tyd790t17D957Y7Q554Q7Z68CE6D47AD2D6879B494FBD74877C3DD.ics";
+		
+		
+		//parseICS(getCalendar(file1));
+		parseICS(getCalendar(file2));
+		SortAndShow();
+		}
+		
+		function getCalendar(file){
+		var ICSfil_tmp = "";
+				   //var file = document.getElementById("myLink").getAttribute("href");
+		//var file = document.getElementById("txtUrl").value;
+        //console.log(file)
+        var rawFile = new XMLHttpRequest();
+        rawFile.open("GET",file,false);
+		rawFile.onload = function(){
+		if(rawFile.readyState === 4) {
+                  if(rawFile.status === 200 || rawFile.status === 0)
+                  {
+				  
+                      var allText = rawFile.response;
+					  document.getElementById("txtShow").value = allText;
+					  // --- Unfolding lines --- //
+					  re = new RegExp("\r\n |\n | ", 'g');
+					  allText = allText.replace(re,'');
+					  //ring.replace(/^F0+/i, '');
+					  
+                      //console.log(allText);
+					  
+					  //ICSfile = allText;
+					  ICSfil_tmp = allText;
+					  //alert(ICSfile);
+					  
+                  }
+              }
+			  //rawFile.send(null);
+		}
+          <!-- rawFile.onreadystatechange = function() { -->
+              <!-- if(rawFile.readyState === 4) { -->
+                  <!-- if(rawFile.status === 200 || rawFile.status === 0) -->
+                  <!-- { -->
+				  
+                      <!-- var allText = rawFile.responseText; -->
+					  <!-- // --- Unfolding lines --- // -->
+					  <!-- re = new RegExp("\r\n |\n | ", 'g'); -->
+					  <!-- allText = allText.replace(re,''); -->
+					  <!-- //ring.replace(/^F0+/i, ''); -->
+					  
+                      <!-- //console.log(allText); -->
+					  
+					  <!-- ICSfile = allText; -->
+                  <!-- } -->
+              <!-- } -->
+          <!-- } -->
+          rawFile.send(null);
+		  
+		  return ICSfil_tmp;
+		}
+		
+		function parseICS(data){
+			var lines = data.split('\r\n');
+			
+			var InsideCalendar = false;
+			var InsideEvent = false;
+			var eventlines = [];
+			var AllEvents = [[]];
+			
+			
+			
+			
+			for(var i = 0;i<lines.length;i++){
+			
+				if(lines[i].match(/END:VEVENT/gi))  // add the event to "AllEvents, and reset the eventLine array
+				{
+				InsideEvent = false;
+				AllEvents.push(eventlines);
+				eventlines = [];
+				}
+				
+				if(InsideEvent==true) // if inside, add data to the event array
+				{
+					eventlines.push(lines[i]);
+				}
+				else // if not, sheck for calendarname
+				{
+				var testStr = lines[i].split(':');
+					if(testStr[0].match(/X-WR-CALNAME/gi))
+					{ 
+						//alert(testStr[1]);
+						document.getElementById("calName").innerHTML = testStr[1];
+						//"calName"
+					}
+				}
+				if(lines[i].match(/BEGIN:VEVENT/gi)) {	
+				InsideEvent = true;
+				
+					
+				}
+				
+			}
+			for(var i = 1;i<AllEvents.length;i++){ // Convert event data to JSON
+				var jsonevent = "";
+				for(var j = 0;j<AllEvents[i].length;j++){
+					var splitted = AllEvents[i][j].split(':');
+					splitted[1] = splitted[1].replace(/(\\)/g,"");
+					jsonevent += "\n\"" + String(splitted[0]) + "\":\"" + String(splitted[1]) + '"';
+					if(j != AllEvents[i].length-1) jsonevent += ', ';
+				}
+				
+				var obj = JSON.parse("{" + jsonevent + "}");
+				DOMevents.push(obj);
+				
+				//alert(jsonevent);
+			}
+			
+			}
+			
+			function SortAndShow(){
+			
+			
+			// Sorts the data in DOMevents
+			var temp = DOMevents.slice(0);
+			DOMevents = temp.sort(function(a,b) {
+				return GetDateTime(b.DTSTART) - GetDateTime(a.DTSTART);
+			});
+			//console.log(DOMevents);
+			
+			
+			// Delete in table calendar
+			document.getElementById("myTable").innerHTML = "";
+			
+			// display data in calendar
+			var prevDate = GetDateTime(DOMevents[0].DTSTART).getDate();
+			for(var i = 0;i<DOMevents.length;i++){
+				ShowCalendar(DOMevents[i]);
+				
+				var daynumber = (GetDateTime(DOMevents[i].DTSTART).getDate());
+				if(i!= DOMevents.length-1)
+				{
+					var nextdaynumber = (GetDateTime(DOMevents[i+1].DTSTART).getDate());
+					if( nextdaynumber != daynumber)
+					{
+						ShowDayHeader(DOMevents[i]);
+					}
+				}
+				else
+				{
+					ShowDayHeader(DOMevents[i]);
+				}
+				
+				<!-- alert(daynumber); -->
+				
+				<!-- if(daynumber != prevDate) -->
+				<!-- { -->
+					<!-- ShowDayHeader(DOMevents[i]); -->
+					<!-- prevDate = GetDateTime(DOMevents[i].DTSTART).getDate(); -->
+				<!-- } -->
+				
+			}
+			// --- add headers --- //
+			var table = document.getElementById("myTable");
+			var row = table.insertRow(0);
+			row.innerHTML = "<tr>	<th>Start</th>				<th>End</th>				<th>Location</th>				<th>Description</th>	<th>SUMMARY</th>			</tr>";
+			
+		}
+		
+		function GetDateTime(str)
+		{
+			var year = parseInt(str.substring(0,4));
+			var month = parseInt(str.substring(4,6)) - 1
+			var day = parseInt(str.substring(6,8));
+			var hour = parseInt(str.substring(9,11)) +1;
+			var minutes = parseInt(str.substring(11,13));
+			
+			
+			//var d = new Date(year);
+			
+		  var d = new Date(year, month, day, hour, minutes, 0, 0);
+		  return d;
+		}
+		
+		function ShowCalendar(obj){
+			var table = document.getElementById("myTable");
+			  var row = table.insertRow(0);
+			    var cell1 = row.insertCell(0);
+				  var cell2 = row.insertCell(1);
+				  var cell3 = row.insertCell(2);
+				  var cell4 = row.insertCell(3);
+				  var cell5 = row.insertCell(4);
+				  
+				  cell1.innerHTML = pad(GetDateTime(obj.DTSTART).getHours(),2) +':'+ pad(GetDateTime(obj.DTSTART).getMinutes(),2);
+				  cell2.innerHTML = pad(GetDateTime(obj.DTEND).getHours(),2) +':'+ pad(GetDateTime(obj.DTEND).getMinutes(),2);
+				  cell3.innerHTML = obj.LOCATION;
+				  cell4.innerHTML = obj.DESCRIPTION;
+				  
+				  var list  = obj.SUMMARY.split(',');
+				  cell5.innerHTML = SelectlongestName(list);
+		}
+		
+		function pad(n, width, z) {
+		  z = z || '0';
+		  n = n + '';
+		  return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+		}
+		
+		function ShowDayHeader(obj){
+			var table = document.getElementById("myTable");
+			var row = table.insertRow(0);
+			
+			
+			var weekday = new Array(7);
+			weekday[0] =  "Sunday";
+			weekday[1] = "Monday";
+			weekday[2] = "Tuesday";
+			weekday[3] = "Wednesday";
+			weekday[4] = "Thursday";
+			weekday[5] = "Friday";
+			weekday[6] = "Saturday";
+			
+			<!-- var cell1 = row.insertCell(0); -->
+			<!-- var cell2 = row.insertCell(1); -->
+			
+			var date = GetDateTime(obj.DTSTART);
+			var dateString = weekday[date.getDay()]+ ' ' + date.getDate() + '.' + (1+ date.getMonth()) + '.' + date.getFullYear();
+			
+			<!-- var header = table.createTHead(); -->
+			<!-- field1 = header.insertCell(0); -->
+			<!-- field1.innerHTML = "hei"; -->
+			
+			
+			var row = table.insertRow(0);
+			row.innerHTML = "<tr>	<th> " + dateString + "</th>				<th> </th>				<th></th>				<th> </th>	<th> </th>			</tr>";
+			  
+			  
+			  <!-- cell1.innerHTML = " "; -->
+			  <!-- cell2.innerHTML = date.getDate() + '.' + (1+ date.getMonth()) + '.' + date.getFullYear();//GetDateTime(obj.DTEND).toLocaleString("de-DE"); -->
+			  
+			  
+			  //var list  = obj.SUMMARY.split(',');
+			  //cell5.innerHTML = SelectlongestName(list);
+		}
+		
+		function LetterCounter(str){
+			var counter = 0;
+			for(var i = 0;i<str.length;i++){
+				var curChar = str.charAt(i);
+				if(curChar.toLowerCase() != curChar.toUpperCase()){
+					counter++;
+				}
+			}
+			return counter;
+		}
+		
+		function SelectlongestName(myArray)
+		{
+			var highestNumber = 0;
+			var resultString = "";
+			for(var i = 0;i<myArray.length;i++){
+				var n = LetterCounter(myArray[i]);
+				if (n >= highestNumber)
+				{
+					highestNumber = n;
+					resultString = myArray[i];
+				}
+			}
+			return resultString;
+		}
+		
+
+  </script>
+	</head>
+	
+	<body>
+	<!-- <a id="myLink" href="https://cloud.timeedit.net/usn/web/publikk/s.ics?i=eZ416n056dQ5j685567Zy4nZ166QQ307Y50QZQ24u15"  ">file link</a> -->
+		<h1> Calendar </h1>
+		<p id="calName"></p>
+		<table id="myTable">
+			
+		</table>
+		<input type="button" value="Load" id="btnClick">
+		<input type="text" value="https://cloud.timeedit.net/usn/web/publikk/s.ics?i=eZ416n056dQ5j685567Zy4nZ166QQ307Y50QZQ24u15" id="txtUrl">
+		<br>
+		<!-- <input type="button" value="Vis event" id="btnEvent"> -->
+		<!-- <br> -->
+		<textarea id="txtShow"></textarea>
+		<div id="calendar"></div>
+		
+		
+
+		
+	</body>
+</html>
